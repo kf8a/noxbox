@@ -4,43 +4,69 @@ import (
 	"bytes"
 	zmq "github.com/pebbe/zmq4"
 	serial "github.com/tarm/goserial"
+	/* "encoding/json" */
 	"io"
 	"log"
+	"regexp"
 	"strings"
+	"time"
 )
 
 type NOXBOX struct {
-	port    io.ReadWriteCloser
 	site    string
-  device  string
+	device  string
 	address string
 }
 
+type Message struct {
+	no   string
+	site string
+}
+
 func (noxbox NOXBOX) Sample() string {
+
+	data := noxbox.read()
+	nox := noxbox.parse(data)
+
+	return nox
+	/* m := Message(nox, noxbox.site) */
+	/* return json.Marshal(m) */
+}
+
+func (noxbox NOXBOX) parse(result string) string {
+	r, _ := regexp.Compile(`no (\d+E-?\d+)`)
+	no := r.FindString(result)
+	return no
+}
+
+func (noxbox NOXBOX) read() string {
 	c := serial.Config{Name: noxbox.device, Baud: 9600}
 	port, err := serial.OpenPort(&c)
-	noxbox.port = port
 	if err != nil {
 		log.Fatal(err)
 	}
-	return noxbox.read("\r")
-}
 
-func (noxbox NOXBOX) read(sep string) string {
+	defer port.Close()
+
 	result := new(bytes.Buffer)
 
 	query := noxbox.address + "no\r"
-	_, err := noxbox.port.Write([]byte(query))
+	_, err = port.Write([]byte(query))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for !strings.Contains(result.String(), sep) {
+	for !strings.Contains(result.String(), "\r") {
 		buffer := make([]byte, 1024)
-		n, err := noxbox.port.Read(buffer)
+		n, err := port.Read(buffer)
 		if err != nil {
-			log.Fatal(err)
+			if err == io.EOF {
+				break
+			} else {
+				log.Fatal(err)
+			}
 		}
+
 		result.Write(buffer[:n])
 	}
 	return result.String()
@@ -63,5 +89,6 @@ func main() {
 		sample := noxbox.Sample()
 		log.Print(sample)
 		socket.Send(sample, 0)
+		time.Sleep(10)
 	}
 }
