@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	/* "encoding/json" */
+	"encoding/json"
 	zmq "github.com/pebbe/zmq4"
 	serial "github.com/tarm/goserial"
 	"io"
@@ -20,9 +20,9 @@ type NOXBOX struct {
 }
 
 type Message struct {
-	nox  float64
-	site string
-	at time.Time
+	NOX  float64   `json:"nox"`
+	Site string    `json:"site"`
+	At   time.Time `json:"at"`
 }
 
 func (noxbox NOXBOX) Sample() string {
@@ -33,20 +33,22 @@ func (noxbox NOXBOX) Sample() string {
 	}
 	nox := noxbox.parse(data)
 
-	/* message := Message{nox:nox, site: noxbox.site, at: time.Now()} */
-	/* json_message, err := json.Marshal(message) */
-	/* if err != nil { */
-	/* 	log.Fatal(err) */
-	/* } */
-	return string(strconv.FormatFloat(nox,'f',-1, 64))
+	message := Message{nox, noxbox.site, time.Now()}
+	json_message, err := json.Marshal(message)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return string(json_message)
 }
 
 func (noxbox NOXBOX) parse(data string) float64 {
 	r, _ := regexp.Compile(`\d+E-?\d+`)
 	no := r.FindString(data)
-	result , err := strconv.ParseFloat(no, 64)
-  if err != nil { log.Fatal(err) }
-  return result
+	result, err := strconv.ParseFloat(no, 64)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return result
 }
 
 func (noxbox NOXBOX) read() string {
@@ -97,7 +99,7 @@ func main() {
 
 	for {
 		sample := noxbox.Sample()
-		log.Print(sample)
+		/* log.Print(sample) */
 		socket.Send(sample, 0)
 		time.Sleep(10)
 	}
