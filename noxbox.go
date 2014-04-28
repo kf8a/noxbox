@@ -7,6 +7,7 @@ import (
 	serial "github.com/tarm/goserial"
 	"io"
 	"log"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -46,7 +47,8 @@ func (noxbox NOXBOX) parse(data string) float64 {
 	no := r.FindString(data)
 	result, err := strconv.ParseFloat(no, 64)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err, data, no)
+		return math.NaN()
 	}
 	return result
 }
@@ -99,7 +101,7 @@ func main() {
 
 	for {
 		sample := noxbox.Sample()
-		/* log.Print(sample) */
+		log.Print(sample)
 		socket.Send(sample, 0)
 		time.Sleep(10)
 	}
